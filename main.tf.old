@@ -1,0 +1,78 @@
+resource "google_compute_instance_template" "llama-template" {
+  name         = "llama-template"
+  machine_type = "n1-standard-1"
+
+  network_interface {
+    network = "default"
+  }
+
+  scheduling {
+    preemptible = true
+  }
+
+  guest_accelerator {
+    type = var.accelerator
+    count = 1
+  }
+
+  disk {
+      disk_size_gb = 20
+      source_image = "projects/${var.project_id}/${var.region}/images/llamacuda"
+    auto_delete = true
+    boot        = true
+  }
+}
+
+resource "google_compute_autoscaler" "llama-autoscaler" {
+  name   = "llama"
+  zone   = var.zone
+  target = google_compute_instance_group_manager.default.id
+
+  autoscaling_policy {
+    max_replicas    = 5
+    min_replicas    = 1
+    cooldown_period = 60
+
+    metric {
+      name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+      filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
+      single_instance_assignment = 65535
+    }
+  }
+}
+
+resource "google_compute_region_backend_service" "llama-backend" {
+  name                  = "llama-backend"
+  protocol              = "HTTP"
+  load_balancing_scheme = "INTERNAL"
+  health_checks         = ["default"]
+  backends {
+    group = google_compute_managed_instance_group.llama-group.self_link
+  }
+}
+
+resource "google_compute_region_url_map" "llama-map" {
+  name            = "llama-map"
+  default_service = google_compute_region_backend_service.llama-backend.self_link
+  host_rule {
+    hosts = ["example.com"]
+  }
+  path_matcher {
+    name            = "llama-matcher"
+    path            = "/*"
+    default_service = google_compute_region_backend_service.llama-backend.self_link
+  }
+}
+
+resource "google_compute_region_target_https_proxy" "llama-proxy" {
+  name             = "llama-proxy"
+  url_map          = google_compute_region_url_map.llama-map.self_link
+  ssl_certificates = ["global/certificates/my-certificate"]
+}
+
+resource "google_compute_region_target_https_proxy_service_attachment" "llama-attachment" {
+  name               = "llama-attachment"
+  target_https_proxy = google_compute_region_target_https_proxy.llama-proxy.self_link
+  region             = "us-central1"
+  service            = "compute.googleapis.com"
+}
