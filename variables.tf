@@ -27,7 +27,7 @@ variable "name" {
 variable "project_id" {
   description = "Your project ID."
   type        = string
-  default     = "skywiz-sandbox"
+  default     = "<YOURPROJECT>"
 }
 
 variable "instance_type" {
@@ -100,5 +100,5 @@ variable "llama_context_size" {
 
 variable "modelbucket" {
   type    = string
-  default = "tsllamamodels"
+  default = "<YOURMODELBUCKET>"
 }
