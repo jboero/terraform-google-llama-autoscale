@@ -14,7 +14,7 @@ The resources/services/activations/deletions that this module will create/trigge
 * resource "google_compute_firewall" "allow_lb_health_check"
 
 ### Tagline
-Create an autoscaling managed instance group of VM spot instances with GPU for Llama.cpp inference clustering. Make sure to build the included Llama.cpp Packer template into your project or build your own image.
+Create an autoscaling managed instance group of VM spot instances with GPU for Llama.cpp inference clustering. Make sure to build the included Llama.cpp Packer template into your project or build your own image. Note it will take a while for your first instance to become healthy. Give about 5 minutes if your endpoint seems unresponsive.
 
 ### Detailed
 Create a regional autoscaling group of spot VMs with GPUs that run Llama.cpp server on the GGUF model of your choice. Store your model in GCS. Adjust the Packer config if necessary and build your image. Then deploy this module with that image into your region with your GPU selection.
