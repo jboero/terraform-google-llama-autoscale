@@ -38,7 +38,6 @@ source "googlecompute" "llamacuda" {
   zone                    = var.zone
   project_id              = var.project_id
   on_host_maintenance     = "TERMINATE"
-  #preemptible             = true
 }
 
 build {
@@ -46,24 +45,26 @@ build {
   provisioner "file" {
     destination = "/tmp/llama.service"
     content     = <<EOF
-      [Unit]
-      Description=Llama.cpp server CUDA build.
-      After=syslog.target network.target local-fs.target remote-fs.target nss-lookup.target
+[Unit]
+Description=Llama.cpp server CUDA build.
+After=syslog.target network.target local-fs.target remote-fs.target nss-lookup.target
 
-      [Service]
-      Type=simple
-      #EnvironmentFile=/etc/sysconfig/llama
-      ExecStart=/usr/bin/llamaserver -m /mnt/${var.llama_model} -c ${var.llama_context_size} -ngl 50 --host :: --port 80
-      ExecReload=/bin/kill -s HUP 
-      Restart=never
+[Service]
+Type=simple
+User=llama
+#EnvironmentFile=/etc/sysconfig/llama
+ExecStart=/usr/bin/llamaserver -m /mnt/${var.llama_model} -c ${var.llama_context_size} -ngl 100 --host 0.0.0.0 --port 8080
+ExecReload=/bin/kill -s HUP 
+Restart=never
 
-      [Install]
-      WantedBy=default.target
-      EOF
+[Install]
+WantedBy=default.target
+EOF
   }
 
   provisioner "shell" {
     inline = [ <<EOF
+      set -x
       echo Adding repos...
       curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
       sudo bash add-google-cloud-ops-agent-repo.sh --also-install
@@ -75,7 +76,7 @@ build {
       echo Updating and installing packages...
       sudo apt update
       sudo apt upgrade -y
-      sudo apt install -y nvidia-cuda-toolkit gcsfuse git make build-essential nvidia-driver-545
+      sudo apt install -y nvidia-cuda-toolkit gcsfuse git make build-essential ${var.nvidia_driver}
       sudo modprobe nvidia
 
       echo Adding models bucket to fstab... read-only, allow_other, and _netdev required.
@@ -87,11 +88,16 @@ build {
       make -j4 LLAMA_CUDA=1 LLAMA_FAST=1 CUDA_DOCKER_ARCH=all CUDA_VERSION=${var.cuda_version} server
 
       # Crude unsigned installation.
+      sudo useradd llama
+      sudo mv /tmp/llama.service /usr/lib/systemd/system/
+      sudo chown root:root ./server /usr/lib/systemd/system/llama.service
       sudo mv server /usr/bin/llamaserver
-      sudo mv /tmp/llama.service /usr/lib/systemd/system
-      sudo chown root:root /usr/bin/llamaserver /usr/lib/systemd/system/llama.service
+      sudo setcap cap_net_bind_service=+ep /usr/bin/llamaserver
       sudo systemctl daemon-reload
-      sudo systemctl enable llama.service
+      sudo mount -a
+      sudo systemctl enable --now llama.service
+      sleep 5
+      sudo systemctl status llama.service
 
       wait
       EOF
