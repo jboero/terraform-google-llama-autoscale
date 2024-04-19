@@ -1,3 +1,4 @@
+![llama_autoscale](https://github.com/jboero/terraform-google-llama-autoscale/assets/7536012/213355de-de3c-45e4-a0c6-d68fd5249e93)
 # Load balanced managed VMs
 The resources/services/activations/deletions that this module will create/trigger are:
 > grep -rn resource main.tf 
@@ -69,26 +70,31 @@ Functional examples are included in the
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| deployment\_name | The name of this particular deployment, will get added as a prefix to most resources. | `string` | `"load-balanced-vms"` | no |
-| enable\_apis | Whether or not to enable underlying apis in this solution. . | `string` | `true` | no |
-| labels | A map of labels to apply to contained resources. | `map(string)` | <pre>{<br>  "load-balanced-vms": true<br>}</pre> | no |
-| network\_id | VPC network to deploy VMs in. A VPC will be created if not specified. | `string` | `""` | no |
-| network\_project\_id | Shared VPC host project ID if a Shared VPC is provided via network\_id. | `string` | `""` | no |
-| nodes | The number of nodes in the managed instance group | `string` | n/a | yes |
-| project\_id | The project ID to deploy to | `string` | n/a | yes |
-| region | The Compute Region to deploy to | `string` | n/a | yes |
-| subnet\_self\_link | Subnetwork to deploy VMs in. A Subnetwork will be created if not specified. | `string` | `""` | no |
-| zone | The Compute Zone to deploy to | `string` | n/a | yes |
+> grep variable variables.tf 
+region: The region to deploy a single cluster in. Default "europe-west4"
+zone:   The zone to deploy a single cluster in. Default "europe-west4-a"
+network: The network to use for deployment. Default "default"
+name:    What to name each of the resources created for this cluster. Default "llama"
+project_id: Project ID to use.
+instance_type: What VM instance type to use for the instance template. Default "n1-standard-1"
+image: Name of the image to use. This should be built with Packer first. Default "llamacuda"
+gpu: Type of GPU to use in each instance. Must be available in region. Default "nvidia-tesla-t4"
+gpu_count: Count of GPUs per instance. Default 1
+port: Port to serve llama.cpp server on IPv4 0.0.0.0. Default 8080
+min_replicas: Minimum number of replicas in the managed instance group. Default 1
+max_replicas: Max number of replicas. Default 5
+load_balancing_scheme: Google LB scheme. Default "EXTERNAL_MANAGED"
+nvidia_driver: (Packer only) Version of the Nvidia drivers to build Packer image with. Ignored in Terraform. Default "nvidia-driver-545"
+cuda_version: (Packer only) Version of CUDA to build the Packer image with. Ignored in Terraform. Default "12.3.99"
+llama_model: (Packer only) Name/path of the model file in your bucket. This will be mounted at /mnt in the VM. Default "amethyst-13b-mistral.Q4_K_M.gguf"
+llama_context_size: (Packer only) Context size to run Llama.cpp server with. Default 4096
+modelbucket: (Packer only) Name of the GCS bucket to mount read-only at /mnt in the VM image. Ignored in Terraform. (required)
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
 | endpoint | The IPv4 of the public endpoint |
-
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Requirements
 
